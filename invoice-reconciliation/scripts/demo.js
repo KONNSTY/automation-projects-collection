@@ -1,6 +1,7 @@
 // Synthetic-only reconciliation; no accounting system or payment API.
 const demo = {invoice:{invoiceNumber:"INV-DEMO-1042",vendor:"Example Office Supplies",currency:"EUR",purchaseOrderNumber:"PO-DEMO-204",lines:[{quantity:2,unitPrice:45},{quantity:1,unitPrice:8}],declaredTotal:98},purchaseOrder:{purchaseOrderNumber:"PO-DEMO-204",vendor:"Example Office Supplies",currency:"EUR",approvedTotal:98},knownInvoiceNumbers:["INV-DEMO-1001"]};
-const x = items.length ? items[0].json : demo;
+const candidate = items?.[0]?.json ?? {};
+const x = Object.keys(candidate).length > 0 ? candidate : demo;
 const i = x.invoice ?? {}, p = x.purchaseOrder ?? {}, errors = [];
 const total = (i.lines??[]).reduce((s,l)=>s+Number(l.quantity??0)*Number(l.unitPrice??0),0);
 if (!i.invoiceNumber) errors.push("invoiceNumber is required");

@@ -1,6 +1,7 @@
 // Synthetic, deterministic triage; no external AI, mailbox, or send action.
 const demo = {ticketId:"demo-ticket-001",subject:"Cannot sign in after password reset",message:"I reset my password but still cannot access my workspace."};
-const x = items.length ? items[0].json : demo;
+const candidate = items?.[0]?.json ?? {};
+const x = Object.keys(candidate).length > 0 ? candidate : demo;
 const subject = String(x.subject??"");
 const text = (subject+" "+String(x.message??"")).toLowerCase();
 const category = /invoice|billing|payment/.test(text) ? "billing" : /bug|error|broken|cannot|can't|failed/.test(text) ? "technical" : /cancel|refund/.test(text) ? "account" : "general";

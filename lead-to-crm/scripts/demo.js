@@ -1,6 +1,7 @@
 // Synthetic-only demo; no CRM connection or external write is performed.
 const demo = {leadId:"demo-lead-001",company:"Northstar Robotics",contact:{name:"Alex Morgan",email:"alex@example.test"},region:"DE",source:"portfolio-demo",consentToContact:false,budgetBand:"mid-market"};
-const x = items.length ? items[0].json : demo;
+const candidate = items?.[0]?.json ?? {};
+const x = Object.keys(candidate).length > 0 ? candidate : demo;
 const email = String(x.contact?.email ?? "").trim().toLowerCase();
 const errors = [];
 if (!x.leadId) errors.push("leadId is required");

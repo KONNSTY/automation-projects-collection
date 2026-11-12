@@ -1,0 +1,22 @@
+# Credentials and local environment
+.env
+.env.*
+!.env.example
+secrets/
+**/secrets/
+# Private payloads, webhook endpoints, and live exports
+private-data/
+**/private-data/
+**/.webhook*
+**/webhook-secrets*
+**/webhook-urls*
+**/live-webhook*
+**/n8n-live-export*.json
+**/n8n-exports/
+# Key material and runtime output
+*.pem
+*.key
+*.p12
+*.pfx
+**/executions/
+.DS_Store

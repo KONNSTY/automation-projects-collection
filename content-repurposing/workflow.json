@@ -1,0 +1,47 @@
+{
+  "name": "Content Repurposing Pipeline — Synthetic Demo",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-content-repurposing",
+      "name": "Run Synthetic Demo",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Synthetic template drafts; no social account or publishing action.\nconst demo = {contentId:\"demo-content-001\",topic:\"A practical automation portfolio built with n8n\",keyPoint:\"Each workflow uses synthetic data and explicit human review.\"};\nconst x = items.length ? items[0].json : demo;\nconst topic = String(x.topic??\"\").trim();\nconst point = String(x.keyPoint??\"\").trim();\nif (!topic) return [{json:{project:\"content-repurposing\",mode:\"synthetic-demo\",valid:false,errors:[\"topic is required\"],drafts:[],approval:{required:true,published:false}}}];\nconst drafts = [{channel:\"linkedin\",text:topic+\". \"+point+\" Built as a reviewable n8n demo.\"},{channel:\"x\",text:topic+\": \"+point},{channel:\"newsletter\",text:\"This week's focus: \"+topic+\". \"+point+\" Human review is required before publication.\"}];\nreturn [{json:{project:\"content-repurposing\",mode:\"synthetic-demo\",contentId:String(x.contentId??\"demo-content\"),drafts,approval:{required:true,published:false,reason:\"Drafts are for human review only.\"}}}];"
+      },
+      "id": "code-content-repurposing",
+      "name": "Process Demo Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Run Synthetic Demo": {
+      "main": [
+        [
+          {
+            "node": "Process Demo Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}

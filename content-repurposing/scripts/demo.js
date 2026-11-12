@@ -1,6 +1,7 @@
 // Synthetic template drafts; no social account or publishing action.
 const demo = {contentId:"demo-content-001",topic:"A practical automation portfolio built with n8n",keyPoint:"Each workflow uses synthetic data and explicit human review."};
-const x = items.length ? items[0].json : demo;
+const candidate = items?.[0]?.json ?? {};
+const x = Object.keys(candidate).length > 0 ? candidate : demo;
 const topic = String(x.topic??"").trim();
 const point = String(x.keyPoint??"").trim();
 if (!topic) return [{json:{project:"content-repurposing",mode:"synthetic-demo",valid:false,errors:["topic is required"],drafts:[],approval:{required:true,published:false}}}];

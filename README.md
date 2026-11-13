@@ -15,7 +15,7 @@ Four mid/senior-level n8n automation projects. Each folder contains its own impl
 - [Invoice Intake & Reconciliation](invoice-reconciliation/README.md)
 
 ## Implementation plans
-- [Lead → HubSpot](lead-to-crm/PLAN.md)
+- [Lead → Polymath CRM](lead-to-crm/PLAN.md)
 - [Gmail → OpenAI triage → Gmail draft](ai-support-triage/PLAN.md)
 - [WordPress → OpenAI → Buffer drafts](content-repurposing/PLAN.md)
 - [Lexware Office read-only reconciliation](invoice-reconciliation/PLAN.md)

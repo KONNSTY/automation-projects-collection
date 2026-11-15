@@ -1,0 +1,162 @@
+{
+  "name": "AI Knowledge Release Control Plane — Synthetic Demo",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-ai-knowledge-release",
+      "name": "Run Synthetic Scenarios",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Synthetic source-change events; all identities and text are fictional.\nreturn [\n  { json: { tenantId: \"demo-tenant\", sourceId: \"handbook-access\", revision: 7, title: \"Workspace access policy\", classification: \"internal\", body: \"Use company SSO for access. Contact alex@example.test for help. Ask a manager before granting elevated access.\", goldenQueries: [{ query: \"How do staff sign in?\", expectedTerms: [\"SSO\", \"manager\"] }], fixtureRecall: 0.96 } },\n  { json: { tenantId: \"demo-tenant\", sourceId: \"handbook-access\", revision: 7, title: \"Workspace access policy\", classification: \"internal\", body: \"Use company SSO for access. Contact alex@example.test for help. Ask a manager before granting elevated access.\", goldenQueries: [{ query: \"How do staff sign in?\", expectedTerms: [\"SSO\", \"manager\"] }], fixtureRecall: 0.96 } },\n  { json: { tenantId: \"demo-tenant\", sourceId: \"finance-export\", revision: 2, title: \"Finance export\", classification: \"restricted\", body: \"Synthetic restricted content must not be indexed.\", goldenQueries: [], fixtureRecall: 0 } }\n];\n"
+      },
+      "id": "seed-ai-knowledge-release",
+      "name": "Seed Synthetic Scenarios",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Deterministic, synthetic-only RAG ingestion gate. No model or external write.\nconst seen = new Set();\nconst out = [];\nconst maxBodyChars = 12000, maxChunkChars = 900, maxChunks = 20, minRecall = 0.85;\nfor (const item of items) {\n  const x = item.json ?? {};\n  const sourceId = String(x.sourceId ?? \"\").trim();\n  const revision = String(x.revision ?? \"\").trim();\n  const eventKey = `${x.tenantId}:${sourceId}:${revision}`;\n  if (seen.has(eventKey)) {\n    out.push({ json: { project: \"ai-knowledge-release\", mode: \"synthetic-demo\", eventKey, route: \"duplicate\", gate: { status: \"SUPPRESSED\", reasons: [\"duplicate source revision\"] }, contentEmitted: false } });\n    continue;\n  }\n  seen.add(eventKey);\n  const reasons = [];\n  if (!/^[a-z0-9-]{3,80}$/i.test(sourceId) || !revision) reasons.push(\"invalid source identity\");\n  if (x.classification === \"restricted\") reasons.push(\"restricted classification\");\n  if (!x.title || !String(x.body ?? \"\").trim()) reasons.push(\"missing title or body\");\n  if (String(x.body ?? \"\").length > maxBodyChars) reasons.push(\"source exceeds size bound\");\n  if (reasons.length) {\n    out.push({ json: { project: \"ai-knowledge-release\", mode: \"synthetic-demo\", eventKey, route: \"quarantine\", gate: { status: \"BLOCKED\", reasons }, contentEmitted: false } });\n    continue;\n  }\n  const redacted = String(x.body).replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/gi, \"[REDACTED_EMAIL]\");\n  const chunks = [];\n  for (let i = 0; i < redacted.length; i += maxChunkChars) chunks.push(redacted.slice(i, i + maxChunkChars));\n  const quality = { fixtureRecall: Number(x.fixtureRecall ?? 0), goldenQueryCount: Array.isArray(x.goldenQueries) ? x.goldenQueries.length : 0, chunkCount: chunks.length };\n  if (quality.fixtureRecall < minRecall) reasons.push(\"retrieval recall below threshold\");\n  if (!quality.goldenQueryCount) reasons.push(\"golden query set missing\");\n  if (chunks.length > maxChunks) reasons.push(\"chunk count exceeds bound\");\n  out.push({ json: {\n    project: \"ai-knowledge-release\", mode: \"synthetic-demo\", eventKey, route: reasons.length ? \"quarantine\" : \"approval\",\n    candidate: { documentId: `${sourceId}:r${revision}`, title: String(x.title).trim(), classification: x.classification, chunks: chunks.map((text, i) => ({ chunkId: `${sourceId}:r${revision}:c${i + 1}`, text, ordinal: i + 1 })), quality },\n    gate: { status: reasons.length ? \"BLOCKED\" : \"APPROVAL_REQUIRED\", reasons, humanApprovalRequired: !reasons.length, vectorWritePerformed: false }\n  } });\n}\nreturn out;\n"
+      },
+      "id": "evaluate-ai-knowledge-release",
+      "name": "Evaluate Policy and Invariants",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "gate-ai-knowledge-release",
+              "leftValue": "={{ $json.route }}",
+              "rightValue": "approval",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-ai-knowledge-release",
+      "name": "Route by Gate Decision",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        940,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "return items.map(item => ({ json: { ...item.json, reviewArtifact: { created: true, requiresHumanApproval: true, externalWritePerformed: false } } }));"
+      },
+      "id": "pass-ai-knowledge-release",
+      "name": "Prepare Approval Package",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "return items.map(item => ({ json: { ...item.json, reviewArtifact: { created: true, requiresHumanApproval: false, externalWritePerformed: false, contentMinimized: true } } }));"
+      },
+      "id": "block-ai-knowledge-release",
+      "name": "Prepare Quarantine Record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        440
+      ]
+    }
+  ],
+  "connections": {
+    "Run Synthetic Scenarios": {
+      "main": [
+        [
+          {
+            "node": "Seed Synthetic Scenarios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Seed Synthetic Scenarios": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Policy and Invariants",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Policy and Invariants": {
+      "main": [
+        [
+          {
+            "node": "Route by Gate Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Gate Decision": {
+      "main": [
+        [
+          {
+            "node": "Prepare Approval Package",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Quarantine Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}

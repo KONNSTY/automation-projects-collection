@@ -1,6 +1,6 @@
 # Automation Projects Collection
 
-Four mid/senior-level n8n automation projects. Each folder contains its own implementation plan, importable workflow, JavaScript Code-node script, and guide.
+Eight n8n automation portfolio projects: four synthetic integration demos and four advanced control-plane demos. Each folder contains its own implementation plan, importable workflow, JavaScript Code-node scripts, and guide.
 
 ## Demo safety
 - Workflows use a manual trigger and synthetic sample data.
@@ -13,16 +13,24 @@ Four mid/senior-level n8n automation projects. Each folder contains its own impl
 - [AI Support Triage Copilot](ai-support-triage/README.md)
 - [Content Repurposing Pipeline](content-repurposing/README.md)
 - [Invoice Intake & Reconciliation](invoice-reconciliation/README.md)
+- [AI Knowledge Release Control Plane](ai-knowledge-release/README.md)
+- [AI Agent Regression & Release Gate](ai-agent-release-gate/README.md)
+- [SLO Incident Orchestrator](slo-incident-orchestrator/README.md)
+- [Access Lifecycle Governance](access-lifecycle-governance/README.md)
 
 ## Implementation plans
 - [Lead → Polymath CRM](lead-to-crm/PLAN.md)
 - [Gmail → OpenAI triage → Gmail draft](ai-support-triage/PLAN.md)
 - [WordPress → OpenAI → Buffer drafts](content-repurposing/PLAN.md)
 - [Lexware Office read-only reconciliation](invoice-reconciliation/PLAN.md)
+- [Governed RAG knowledge release](ai-knowledge-release/PLAN.md)
+- [AI agent regression and release gates](ai-agent-release-gate/PLAN.md)
+- [SLO-based incident orchestration](slo-incident-orchestrator/PLAN.md)
+- [Joiner/mover/leaver access governance](access-lifecycle-governance/PLAN.md)
 
 ## Import and run
-For each project, use **Overview → Add workflow → Import from File** and select its `workflow.json`. Save the workflow and click **Execute Workflow**. Inspect the Code node output. Workflows are inactive and have no webhook triggers.
+For each project, use **Overview → Add workflow → Import from File** and select its `workflow.json`. Save the workflow and click **Execute Workflow**. Inspect the branch outputs. Workflows are inactive and have no webhook triggers.
 
 Each `scripts/demo.js` is the source for the code embedded in the workflow. Keep both aligned when changing the demo.
 
-The four n8n demo workflows were each executed successfully with synthetic data on 2026-11-13. They remain inactive and do not connect to live accounts.
+The original four n8n demo workflows were executed with synthetic data on 2026-11-13. The four advanced workflows are importable portfolio artifacts; their live integrations and credentials are intentionally absent. All workflows remain inactive and use no live accounts.

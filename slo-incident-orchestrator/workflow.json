@@ -1,0 +1,162 @@
+{
+  "name": "SLO Incident Orchestrator — Synthetic Demo",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-slo-incident-orchestrator",
+      "name": "Run Synthetic Scenarios",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Synthetic metric windows and alert events. No live telemetry is read.\nconst observedAt = new Date(Date.now() - 60000).toISOString();\nreturn [\n  { json: { eventId: \"evt-healthy-01\", service: \"catalog-api\", symptom: \"5xx-rate\", observedAt, windowMinutes: 5, requests: 10000, errors: 2, longWindowErrorRate: 0.0002, sloErrorBudgetRate: 0.01, affectedUsers: 2, recovered: false, runbook: \"inspect_recent_deploy\" } },\n  { json: { eventId: \"evt-checkout-01\", service: \"checkout-api\", symptom: \"5xx-rate\", observedAt, windowMinutes: 5, requests: 4000, errors: 240, longWindowErrorRate: 0.035, sloErrorBudgetRate: 0.01, affectedUsers: 900, recovered: false, runbook: \"rollback_candidate_review\" } },\n  { json: { eventId: \"evt-checkout-02\", service: \"checkout-api\", symptom: \"5xx-rate\", observedAt, windowMinutes: 5, requests: 4000, errors: 250, longWindowErrorRate: 0.034, sloErrorBudgetRate: 0.01, affectedUsers: 910, recovered: false, runbook: \"rollback_candidate_review\" } },\n  { json: { eventId: \"evt-search-recovered\", service: \"search-api\", symptom: \"latency-p99\", observedAt, windowMinutes: 5, requests: 8000, errors: 0, longWindowErrorRate: 0.002, sloErrorBudgetRate: 0.01, affectedUsers: 0, recovered: true, runbook: \"observe_only\" } }\n];\n"
+      },
+      "id": "seed-slo-incident-orchestrator",
+      "name": "Seed Synthetic Scenarios",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Deterministic, synthetic SLO evaluation; no paging or remediation call.\nconst seen = new Set(), out = [];\nfor (const item of items) {\n  const x = item.json ?? {}, key = `${x.service}:${x.symptom}`;\n  const reasons = [];\n  if (!x.eventId || !x.service || !x.symptom) reasons.push(\"identity fields missing\");\n  if (!Number.isFinite(Number(x.requests)) || Number(x.requests) <= 0 || !Number.isFinite(Number(x.errors)) || Number(x.errors) < 0 || Number(x.errors) > Number(x.requests) || !Number.isFinite(Number(x.sloErrorBudgetRate)) || Number(x.sloErrorBudgetRate) <= 0 || !Number.isFinite(Number(x.longWindowErrorRate))) reasons.push(\"invalid metric window\");\n  const ageMs = Date.now() - Date.parse(x.observedAt ?? \"\");\n  if (!Number.isFinite(ageMs) || ageMs < -300000 || ageMs > 15 * 60000) reasons.push(\"window is stale or timestamp is invalid\");\n  const duplicate = seen.has(key);\n  seen.add(key);\n  if (reasons.length) {\n    out.push({ json: { project: \"slo-incident-orchestrator\", mode: \"synthetic-demo\", eventId: x.eventId ?? \"unknown\", route: \"review\", incident: null, gate: { status: \"INPUT_REVIEW_REQUIRED\", reasons, remediationPerformed: false } } });\n    continue;\n  }\n  const shortRate = Number(x.errors) / Number(x.requests), budget = Number(x.sloErrorBudgetRate);\n  const shortBurn = budget > 0 ? shortRate / budget : Infinity;\n  const longBurn = budget > 0 ? Number(x.longWindowErrorRate) / budget : Infinity;\n  const breach = shortBurn >= 14.4 && longBurn >= 3 || shortBurn >= 6 && longBurn >= 6;\n  const severity = breach && Number(x.affectedUsers) >= 500 ? \"SEV-1\" : breach ? \"SEV-2\" : \"OBSERVE\";\n  const route = x.recovered ? \"suppressed\" : duplicate ? \"deduplicated\" : breach ? \"incident-review\" : \"observe\";\n  out.push({ json: { project: \"slo-incident-orchestrator\", mode: \"synthetic-demo\", eventId: x.eventId, fingerprint: key, route, incident: route === \"incident-review\" ? { service: x.service, symptom: x.symptom, severity, shortBurn: Number(shortBurn.toFixed(2)), longBurn: Number(longBurn.toFixed(2)), affectedUsers: Number(x.affectedUsers), evidenceWindowMinutes: Number(x.windowMinutes), suggestedRunbook: [\"inspect_recent_deploy\", \"rollback_candidate_review\", \"observe_only\"].includes(x.runbook) ? x.runbook : \"manual_diagnosis\" } : null, gate: { status: route === \"incident-review\" ? \"HUMAN_ACK_REQUIRED\" : route.toUpperCase(), reasons: route === \"incident-review\" ? [\"multi-window SLO burn threshold exceeded\"] : [], pageSent: false, remediationPerformed: false, humanApprovalRequired: route === \"incident-review\" } } });\n}\nreturn out;\n"
+      },
+      "id": "evaluate-slo-incident-orchestrator",
+      "name": "Evaluate Policy and Invariants",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "gate-slo-incident-orchestrator",
+              "leftValue": "={{ $json.route }}",
+              "rightValue": "incident-review",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-slo-incident-orchestrator",
+      "name": "Route by Gate Decision",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        940,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "return items.map(item => ({ json: { ...item.json, reviewArtifact: { created: true, requiresHumanApproval: true, externalWritePerformed: false } } }));"
+      },
+      "id": "pass-slo-incident-orchestrator",
+      "name": "Prepare Incident Review",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "return items.map(item => ({ json: { ...item.json, reviewArtifact: { created: true, requiresHumanApproval: false, externalWritePerformed: false, contentMinimized: true } } }));"
+      },
+      "id": "block-slo-incident-orchestrator",
+      "name": "Prepare Observe / Suppression Record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        440
+      ]
+    }
+  ],
+  "connections": {
+    "Run Synthetic Scenarios": {
+      "main": [
+        [
+          {
+            "node": "Seed Synthetic Scenarios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Seed Synthetic Scenarios": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Policy and Invariants",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Policy and Invariants": {
+      "main": [
+        [
+          {
+            "node": "Route by Gate Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Gate Decision": {
+      "main": [
+        [
+          {
+            "node": "Prepare Incident Review",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Observe / Suppression Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}

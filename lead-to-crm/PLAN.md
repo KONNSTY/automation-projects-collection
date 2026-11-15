@@ -21,7 +21,8 @@
 ## Authentication prerequisite
 - Implement or identify a dedicated machine-to-machine credential for n8n with only the ability to create/update approved lead fields in the selected CRM tenant. It must not impersonate an employee, bypass MFA, grant cross-tenant access, or expose the Firebase Admin service account.
 - Bind the credential to one tenant and allowed fields; validate it server-side, rate-limit it, audit every mutation, support rotation/revocation, and make writes idempotent.
-- If this requires a new CRM backend route, prepare and review the change first. Do not deploy or expand production access until the user approves the exact tenant, fields, and write behavior.
+- A local-only backend route draft now implements this boundary. It remains unbuilt, untested, undeployed, and disabled; review it and add dedicated integration coverage before provisioning the key or enabling the route.
+- Do not deploy or expand production access until the user approves the exact tenant, fields, and write behavior.
 - Do not use the read-only staging preview for writes. Do not use a personal Firebase ID token or password/OTP as a long-lived automation secret.
 
 ## Data and controls
@@ -31,7 +32,7 @@
 
 ## Setup still needed together
 - Confirm the lead source, target CRM tenant, field mapping, and approval destination.
-- Approve and provision the least-privilege CRM machine credential; enter it directly in n8n.
+- Review and verify the local backend route, then approve the tenant/field scope and provision the least-privilege CRM machine credential; enter the raw key directly in n8n and keep its digest only in server-side configuration.
 - Configure the signed webhook in n8n and register it only with the approved source.
 - Run synthetic dry runs, then one explicitly approved test record after the CRM service-auth path is ready.
 

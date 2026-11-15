@@ -1,0 +1,162 @@
+{
+  "name": "Access Lifecycle Governance — Synthetic Demo",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-access-lifecycle-governance",
+      "name": "Run Synthetic Scenarios",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Synthetic lifecycle requests and policy; no real people or IdP actions.\nreturn [\n  { json: { requestId: \"req-joiner-001\", action: \"joiner\", subjectId: \"user-demo-17\", department: \"engineering\", role: \"developer\", entitlements: [\"repo-read\", \"cloud-admin\"], managerApproval: true, securityApproval: false, effectiveAt: \"2026-11-16T09:00:00Z\", expiresAt: \"2026-12-16T09:00:00Z\", requestedBy: \"manager-demo-4\" } },\n  { json: { requestId: \"req-mover-002\", action: \"mover\", subjectId: \"user-demo-29\", department: \"finance\", role: \"analyst\", entitlements: [\"invoice-approve\", \"vendor-create\"], managerApproval: true, securityApproval: true, effectiveAt: \"2026-11-16T09:00:00Z\", expiresAt: \"2026-12-16T09:00:00Z\", requestedBy: \"manager-demo-7\" } },\n  { json: { requestId: \"req-leaver-003\", action: \"leaver\", subjectId: \"user-demo-31\", department: \"support\", role: \"agent\", entitlements: [\"support-console\"], managerApproval: true, securityApproval: false, effectiveAt: \"2026-11-16T17:00:00Z\", expiresAt: null, requestedBy: \"manager-demo-8\" } },\n  { json: { requestId: \"req-joiner-001\", action: \"joiner\", subjectId: \"user-demo-17\", department: \"engineering\", role: \"developer\", entitlements: [\"repo-read\", \"cloud-admin\"], managerApproval: true, securityApproval: false, effectiveAt: \"2026-11-16T09:00:00Z\", expiresAt: \"2026-12-16T09:00:00Z\", requestedBy: \"manager-demo-4\" } }\n];\n"
+      },
+      "id": "seed-access-lifecycle-governance",
+      "name": "Seed Synthetic Scenarios",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Synthetic least-privilege and SoD evaluator; creates plans only.\nconst seen = new Set(), out = [];\nconst privileged = new Set([\"cloud-admin\"]), sodPairs = [[\"invoice-approve\", \"vendor-create\"]];\nfor (const item of items) {\n  const x = item.json ?? {}, reasons = [], requestId = String(x.requestId ?? \"\");\n  if (!requestId || !x.subjectId || ![\"joiner\", \"mover\", \"leaver\"].includes(x.action)) reasons.push(\"invalid request identity or lifecycle action\");\n  if (seen.has(requestId)) {\n    out.push({ json: { project: \"access-lifecycle-governance\", mode: \"synthetic-demo\", requestId, route: \"duplicate\", plan: null, gate: { status: \"SUPPRESSED\", reasons: [\"duplicate request ID\"], accessChanged: false } } });\n    continue;\n  }\n  seen.add(requestId);\n  const entitlements = Array.isArray(x.entitlements) ? x.entitlements : [];\n  if (entitlements.some(e => sodPairs.some(([a, b]) => entitlements.includes(a) && entitlements.includes(b)))) reasons.push(\"segregation-of-duties conflict\");\n  const isPrivileged = entitlements.some(e => privileged.has(e));\n  if (!x.managerApproval) reasons.push(\"manager approval missing\");\n  if (isPrivileged && !x.securityApproval) reasons.push(\"security approval required for privileged access\");\n  const start = Date.parse(x.effectiveAt ?? \"\"), expiry = x.expiresAt ? Date.parse(x.expiresAt) : NaN;\n  if (!Number.isFinite(start)) reasons.push(\"effective date missing or invalid\");\n  if (x.action !== \"leaver\" && (!Number.isFinite(expiry) || expiry <= start)) reasons.push(\"grant must have an expiry after its effective date\");\n  const action = x.action === \"leaver\" ? \"revoke\" : x.action === \"mover\" ? \"reconcile_entitlements\" : \"grant\";\n  out.push({ json: { project: \"access-lifecycle-governance\", mode: \"synthetic-demo\", requestId, route: reasons.length ? \"denied\" : \"approval\", plan: reasons.length ? null : { action, subjectRef: x.subjectId, entitlementRefs: entitlements, effectiveAt: x.effectiveAt, expiresAt: x.expiresAt ?? null, approvalCountRequired: isPrivileged ? 2 : 1, evidenceRef: requestId }, gate: { status: reasons.length ? \"BLOCKED\" : \"APPROVAL_REQUIRED\", reasons, humanApprovalRequired: !reasons.length, accessChanged: false } } });\n}\nreturn out;\n"
+      },
+      "id": "evaluate-access-lifecycle-governance",
+      "name": "Evaluate Policy and Invariants",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "gate-access-lifecycle-governance",
+              "leftValue": "={{ $json.route }}",
+              "rightValue": "approval",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-access-lifecycle-governance",
+      "name": "Route by Gate Decision",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        940,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "return items.map(item => ({ json: { ...item.json, reviewArtifact: { created: true, requiresHumanApproval: true, externalWritePerformed: false } } }));"
+      },
+      "id": "pass-access-lifecycle-governance",
+      "name": "Prepare Approval Package",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "return items.map(item => ({ json: { ...item.json, reviewArtifact: { created: true, requiresHumanApproval: false, externalWritePerformed: false, contentMinimized: true } } }));"
+      },
+      "id": "block-access-lifecycle-governance",
+      "name": "Prepare Denial Record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        440
+      ]
+    }
+  ],
+  "connections": {
+    "Run Synthetic Scenarios": {
+      "main": [
+        [
+          {
+            "node": "Seed Synthetic Scenarios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Seed Synthetic Scenarios": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Policy and Invariants",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Policy and Invariants": {
+      "main": [
+        [
+          {
+            "node": "Route by Gate Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Gate Decision": {
+      "main": [
+        [
+          {
+            "node": "Prepare Approval Package",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Denial Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}

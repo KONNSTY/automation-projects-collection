@@ -33,4 +33,4 @@ For each project, use **Overview → Add workflow → Import from File** and sel
 
 Each `scripts/demo.js` is the source for the code embedded in the workflow. Keep both aligned when changing the demo.
 
-The original four n8n demo workflows were executed with synthetic data on 2026-11-13. The four advanced workflows are importable portfolio artifacts; their live integrations and credentials are intentionally absent. All workflows remain inactive and use no live accounts.
+The original four n8n demo workflows were executed with synthetic data on 2026-11-13. The four advanced workflows were imported and executed successfully with synthetic scenarios on 2026-11-15. All eight remain inactive and use no live accounts or credentials.
